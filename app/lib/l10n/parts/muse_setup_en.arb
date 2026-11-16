@@ -1,0 +1,10 @@
+{
+  "museInstallAction": "Enable Muse",
+  "museInstallBody": "This app includes the Muse image and video plugin. Install it with one tap, with no separate download or commands. Internet access is needed to install dependencies the first time.",
+  "museSetupTitle": "Connect Muse",
+  "museSetupBody": "Enter the service URL and API key to add image and video services and use them as defaults.",
+  "museSetupAction": "Save and enable images and video",
+  "museSetupHint": "Paste the server URL, /v1 API root, or /admin management-page link. HTTP sends your key and content without encryption.",
+  "museSetupUnavailable": "Could not add both services. Remove unused services (limit: 8) and check that the custom Muse plugin is enabled.",
+  "museSetupSaved": "Muse image and video settings saved. Return to chat and choose Generate. Saving does not verify the API connection."
+}

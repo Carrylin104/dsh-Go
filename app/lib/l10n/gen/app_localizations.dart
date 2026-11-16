@@ -20234,6 +20234,54 @@ abstract class L10n {
   /// **'启动时进入'**
   String get modeStartup;
 
+  /// No description provided for @museInstallAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'一键启用 Muse'**
+  String get museInstallAction;
+
+  /// No description provided for @museInstallBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'安装包已内置 Muse 图片与视频插件。点一下即可安装，无需下载插件或输入命令；首次启用需要联网补齐依赖。'**
+  String get museInstallBody;
+
+  /// No description provided for @museSetupTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接 Muse'**
+  String get museSetupTitle;
+
+  /// No description provided for @museSetupBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'填写服务地址与 API Key，自动添加图片、视频服务并设为默认。'**
+  String get museSetupBody;
+
+  /// No description provided for @museSetupAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存并启用图片与视频'**
+  String get museSetupAction;
+
+  /// No description provided for @museSetupHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'可粘贴服务器地址、/v1 或 /admin 管理页地址。HTTP 会明文传输密钥和内容。'**
+  String get museSetupHint;
+
+  /// No description provided for @museSetupUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法添加这两个服务。请先移除不用的服务（最多 8 个），并确认已启用定制版 Muse 插件。'**
+  String get museSetupUnavailable;
+
+  /// No description provided for @museSetupSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'Muse 图片与视频配置已保存。回到聊天，选择“生成”即可使用；保存不代表接口已验证。'**
+  String get museSetupSaved;
+
   /// No description provided for @nearbyThisChat.
   ///
   /// In zh, this message translates to:

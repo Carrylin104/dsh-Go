@@ -1,4 +1,5 @@
 import 'package:dsh_app/state/media_generation.dart';
+import 'package:dsh_app/state/android_features.dart';
 import 'package:dsh_app/state/plugins_state.dart';
 import 'package:dsh_app/ui/plugins/plugin_detail_sheet.dart';
 import 'package:dsh_app/ui/plugins/plugins_screen.dart';
@@ -37,7 +38,12 @@ void main() {
   });
   tearDown(() => client.close());
 
-  Future<void> pump(WidgetTester tester, {String appVersion = '1.0.2', bool settings = false}) async {
+  Future<void> pump(
+    WidgetTester tester, {
+    String appVersion = '1.0.2',
+    bool settings = false,
+    bool android = false,
+  }) async {
     usePhoneView(tester);
     await tester.pumpWidget(
       testApp(
@@ -49,6 +55,7 @@ void main() {
             npmIntegrity: (name, _) async => officialFixtureMarket().byName[name]?.listing?.integrity,
           ),
           appVersionProvider.overrideWithValue(AppVersion.tryParse(appVersion)!),
+          if (android) operatingSystemProvider.overrideWithValue('android'),
         ],
       ),
     );
@@ -64,6 +71,13 @@ void main() {
     await tester.tap(find.text('在此主机上安装'));
     await tester.pumpAndSettle();
     expect(carrier.argsOf('pluginManager/installBundle').single['spec'], '@dsh-go/media@0.2.0');
+  });
+
+  testWidgets('Android installs the bundled Muse archive through the plugin manager', (tester) async {
+    await pump(tester, android: true);
+    await tester.tap(find.text('一键启用 Muse'));
+    await tester.pumpAndSettle();
+    expect(carrier.argsOf('pluginManager/installBundle').single['spec'], '/opt/dsh-go/dsh-media.tgz');
   });
 
   testWidgets('media settings still offers installation when no plugin serves settings', (tester) async {

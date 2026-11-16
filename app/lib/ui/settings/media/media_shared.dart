@@ -11,14 +11,6 @@ import '../../../state/media_generation.dart' show GenerateKind;
 import '../../../state/media_settings.dart';
 import '../../theme/theme.dart';
 
-/// The plugin's own `validateServices` bound: `settings/mutate` refuses a 9th.
-const mediaServiceLimit = 8;
-
-/// [services] as the plugin's `value.services` rows.
-List<Map<String, Object?>> mediaServiceRows(Iterable<MediaServiceConfig> services) => [
-  for (final service in services) service.toJson(),
-];
-
 /// Writes [service] over the row of its id (a no-op reads as saved).
 Future<bool> mediaWriteService(
   SettingsEditor editor,

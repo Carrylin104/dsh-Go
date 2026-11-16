@@ -49,7 +49,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.ccch1mneyyy.dsh_app"
+        // Personal Muse build installs alongside upstream DSH Go and the first test APK.
+        applicationId = "io.github.carrylin104.musechat"
         // java.nio.file (symlinks while unpacking the rootfs) needs API 26.
         minSdk = 26
         // Target 28 like Termux, so the API 29+ exec restriction on app-private

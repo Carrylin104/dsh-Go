@@ -11482,6 +11482,35 @@ class L10nEn extends L10n {
   String get modeStartup => 'Open on launch';
 
   @override
+  String get museInstallAction => 'Enable Muse';
+
+  @override
+  String get museInstallBody =>
+      'This app includes the Muse image and video plugin. Install it with one tap, with no separate download or commands. Internet access is needed to install dependencies the first time.';
+
+  @override
+  String get museSetupTitle => 'Connect Muse';
+
+  @override
+  String get museSetupBody =>
+      'Enter the service URL and API key to add image and video services and use them as defaults.';
+
+  @override
+  String get museSetupAction => 'Save and enable images and video';
+
+  @override
+  String get museSetupHint =>
+      'Paste the server URL, /v1 API root, or /admin management-page link. HTTP sends your key and content without encryption.';
+
+  @override
+  String get museSetupUnavailable =>
+      'Could not add both services. Remove unused services (limit: 8) and check that the custom Muse plugin is enabled.';
+
+  @override
+  String get museSetupSaved =>
+      'Muse image and video settings saved. Return to chat and choose Generate. Saving does not verify the API connection.';
+
+  @override
   String get nearbyThisChat => 'This chat';
 
   @override

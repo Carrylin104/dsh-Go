@@ -13,13 +13,17 @@
 
 构建工具来自 [subosito/flutter-action](https://github.com/subosito/flutter-action)、[android-actions/setup-android](https://github.com/android-actions/setup-android)、[actions/setup-java](https://github.com/actions/setup-java)、[gradle/actions](https://github.com/gradle/actions)。仓库原来已有运行时构建，本工作流把检查、APK 与产物下载接在一起，不自动发布 Release。
 
-默认使用 Android 调试证书签名，APK 可安装，但不能覆盖官方不同证书的安装；GitHub 临时 runner 的证书也不保证跨次相同。已有安装先导出资料；长期自用请按原项目文档配置自己的稳定签名。这里没有使用官方发布密钥。
+个人版名称为 **DSH Muse**，包名 `io.github.carrylin104.musechat`，可与原版和首个测试 APK 共存，不迁移或覆盖它们的数据。工作流从仓库 Actions secrets 读取 `MUSE_SIGNING_KEY`（PKCS12 的 base64）与 `MUSE_SIGNING_PASSWORD`，别名 `muse`；不使用官方发布密钥。更新源为个人 fork，未发布 Release 时使用手动提供的 APK。
 
-## 安装修改后的媒体插件
+## 手机一键启用（本机运行时）
 
-**APK 与插件都需要。** APK 包含 App 和 Linux 运行时；定制媒体插件作为独立 tgz 提供，仍通过原来的插件安装机制加载。它不会自动替换手机上已经安装的市场版本。
+只需下载 APK。按首次引导安装本机运行时并配置聊天模型，然后打开 **设置 → 图像与视频 → 一键启用 Muse**。定制插件已放在运行时 `/opt/dsh-go/dsh-media.tgz`，按钮调用原有插件管理器安装，不需要终端、手机文件权限或另外下载 tgz；首次需要联网补齐依赖。按 App 提示重启引擎。
 
-将 tgz 放到手机内核/远程主机可读的绝对路径，在该主机的终端运行：
+点 **连接 Muse**，填写服务地址和 API Key，再点 **保存并启用图片与视频**。图片与视频会共用一份凭据，并自动设为各自默认模型。支持粘贴服务器根地址、`/v1` 或 `/admin` 链接；表单会转换为 API 根地址。已有其他媒体服务保留，重复配置同一对 Muse 服务不会新增重复项。保存不验证密钥或实际生成权限。
+
+## 远程主机与手动安装
+
+远程主机不使用手机内置路径。把单独提供的 tgz 放到该主机可读的绝对路径，然后在远程终端运行：
 
 ```sh
 dsh plugin --profile web add /绝对路径/ccch1mneyyy-dsh-media-0.3.1-muse.1.tgz

@@ -15,6 +15,13 @@ import 'package:flutter/foundation.dart';
 import '../ui/chat/media/generate_header.dart' show GenerateKind;
 import 'media_catalog.dart';
 
+/// The media plugin accepts at most eight configured services.
+const mediaServiceLimit = 8;
+
+List<Map<String, Object?>> mediaServiceRows(Iterable<MediaServiceConfig> services) => [
+  for (final service in services) service.toJson(),
+];
+
 /// One row of the plugin's `value.services`.
 @immutable
 class MediaServiceConfig {

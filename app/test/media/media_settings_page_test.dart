@@ -257,6 +257,81 @@ void main() {
 
   Map<String, Object?> lastOp() => (host.mutates().last['ops']! as List).single as Map<String, Object?>;
 
+  Map<String, Object?> museCatalog() => {
+    ..._catalog(),
+    'models': [
+      _model('muse-image', 'Muse Image', 'image', 'muse-image'),
+      _model('muse-video', 'Muse Video', 'video', 'muse-video'),
+    ],
+    'presets': [
+      for (final kind in ['image', 'video'])
+        _preset(
+          id: 'muse2api-$kind',
+          label: 'Muse $kind',
+          labelEn: 'Muse $kind',
+          provider: 'muse2api',
+          profile: 'muse-$kind',
+          baseUrl: 'http://127.0.0.1:18610/v1',
+          kind: kind,
+          models: ['muse-$kind'],
+          keyGroup: 'muse2api',
+        ),
+    ],
+  };
+
+  testWidgets('Muse quick setup writes both services and defaults together, then stores one secret', (tester) async {
+    await open(
+      tester,
+      describe: _describe(services: [], catalog: museCatalog()),
+    );
+    await tester.tap(find.text(_zh.museSetupTitle));
+    await settle(tester);
+    final save = find.widgetWithText(FilledButton, _zh.museSetupAction);
+    expect(tester.widget<FilledButton>(save).onPressed, isNull);
+    await tester.enterText(find.byKey(const ValueKey('muse-setup-url')), 'http://192.168.1.10:18610/admin');
+    await tester.enterText(find.byKey(const ValueKey('muse-setup-key')), 'SYNTHETIC_MUSE_KEY');
+    await tester.pump();
+    await tester.tap(save);
+    await flush(tester);
+    final ops = host.mutates().single['ops']! as List;
+    expect(ops, hasLength(2));
+    final value = host.namespaces['dsh-media']!.value;
+    final services = (value['services']! as List).cast<Map>();
+    expect(services, hasLength(2));
+    expect(services.map((s) => s['baseUrl']).toSet(), {'http://192.168.1.10:18610/v1'});
+    expect(services.map((s) => s['keyRef']).toSet(), {'DSH_MEDIA_MUSE2API_API_KEY'});
+    expect(host.credentials['DSH_MEDIA_MUSE2API_API_KEY'], 'SYNTHETIC_MUSE_KEY');
+    expect((value['defaults']! as Map)['imageModelId'], 'muse-image');
+    expect((value['defaults']! as Map)['videoModelId'], 'muse-video');
+    expect(value.toString(), isNot(contains('SYNTHETIC_MUSE_KEY')));
+    expect(find.byKey(const ValueKey('muse-setup-key')), findsNothing);
+    expect(find.text(_zh.museSetupSaved), findsOneWidget);
+  });
+
+  testWidgets('Muse quick setup reports credential refusal and can be retried without duplicate services', (
+    tester,
+  ) async {
+    await open(
+      tester,
+      describe: _describe(services: [], catalog: museCatalog()),
+    );
+    host.envCredentials.add('DSH_MEDIA_MUSE2API_API_KEY');
+    await tester.tap(find.text(_zh.museSetupTitle));
+    await settle(tester);
+    await tester.enterText(find.byKey(const ValueKey('muse-setup-url')), 'http://192.168.1.10:18610');
+    await tester.enterText(find.byKey(const ValueKey('muse-setup-key')), 'SYNTHETIC_MUSE_KEY');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, _zh.museSetupAction));
+    await flush(tester);
+    expect(find.byKey(const ValueKey('muse-setup-key')), findsOneWidget);
+    expect(host.credentials, isEmpty);
+    host.envCredentials.clear();
+    await tester.tap(find.widgetWithText(FilledButton, _zh.museSetupAction));
+    await flush(tester);
+    expect(host.namespaces['dsh-media']!.value['services']! as List, hasLength(2));
+    expect(host.credentials['DSH_MEDIA_MUSE2API_API_KEY'], 'SYNTHETIC_MUSE_KEY');
+  });
+
   testWidgets('the curated page: defaults, services with models and key state, cost guard', (tester) async {
     await open(
       tester,

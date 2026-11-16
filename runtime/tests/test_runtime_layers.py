@@ -140,6 +140,21 @@ class LayerPackaging(unittest.TestCase):
                           for p in out.glob('*.tar.gz')}
                 self.assertEqual(actual, expected)
 
+    def test_muse_archive_is_in_engine_layer_without_locking_user_configuration(self):
+        media = self.root / 'media.tgz'
+        media.write_bytes(b'synthetic plugin archive')
+        out, command = self.command('muse')
+        result = subprocess.run(command + ['--media', str(media)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        engine = members(out / 'engine-arm64-v8a.tar.gz')
+        base = members(out / 'base-arm64-v8a.tar.gz')
+        self.assertEqual(engine[rt.DSH_MEDIA_ARCHIVE][3], media.read_bytes())
+        self.assertNotIn(rt.DSH_MEDIA_ARCHIVE, base)
+        self.assertNotIn(b'dsh-media', engine['etc/dsh-app/dsh-web.patch.yml'][3])
+        self.assertFalse(any(p.startswith('root/.dsh/profiles/') for p in engine))
+        manifest = self.manifest(out)
+        self.assertEqual(manifest['upgrade']['paths'], rt.ENGINE_PATHS)
+
     def test_layers_reconstruct_legacy_tree_and_manifest_contract(self):
         old_dir, old_report = self.build('legacy', layered=False)
         out, report = self.build('layers')

@@ -37,6 +37,8 @@ jobs:
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
           npm test
+      - name: Test bundled media archive packaging
+        run: python3 -I runtime/tests/test_runtime_layers.py
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -53,7 +55,7 @@ jobs:
           python3 tool/l10n_merge.py
           git diff --exit-code -- lib/l10n
           flutter analyze --no-pub
-          flutter test --no-pub test/media/muse_settings_test.dart test/media/media_settings_test.dart test/media/media_catalog_test.dart
+          flutter test --no-pub test/media/muse_settings_test.dart test/media/muse_setup_test.dart test/media/media_settings_test.dart test/media/media_catalog_test.dart test/media/media_settings_page_test.dart test/media/media_market_test.dart test/plugins/media_install_consumer_owner_test.dart test/arch/import_direction_test.dart
       - name: Pack the Muse media plugin
         working-directory: runtime/media/dsh-media
         run: |
@@ -132,13 +134,33 @@ jobs:
       - name: Build APK through the repository build script
         # The hosted runner can point ANDROID_NDK_HOME at a different NDK.
         # Let tawcroot select its reviewed pin from the SDK; Flutter has its own ndkVersion.
-        run: env -u ANDROID_NDK_HOME bash tooling/build-apk.sh --release -f arm64 --keep-daemon
+        env:
+          MUSE_SIGNING_KEY: ${{ secrets.MUSE_SIGNING_KEY }}
+          MUSE_SIGNING_PASSWORD: ${{ secrets.MUSE_SIGNING_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          key = Path(os.environ['RUNNER_TEMP']) / 'muse-signing.p12'
+          key.write_bytes(base64.b64decode(os.environ['MUSE_SIGNING_KEY'], validate=True))
+          key.chmod(0o600)
+          password = os.environ['MUSE_SIGNING_PASSWORD']
+          props = Path('app/android/key.properties')
+          props.write_text(f'storeFile={key}\nstorePassword={password}\nkeyPassword={password}\nkeyAlias=muse\n')
+          props.chmod(0o600)
+          PY
+          env -u ANDROID_NDK_HOME bash tooling/build-apk.sh --release -f arm64 --keep-daemon -- \
+            --dart-define=DSH_UPDATE_REPO=Carrylin104/dsh-Go \
+            --dart-define=DSH_UPDATE_MIRROR= --dart-define=DSH_UPDATE_FEED= --dart-define=DSH_UPDATE_MIRRORS=
       - name: Verify APK and write checksum
         run: |
           mkdir -p dist
           cp app/build/app/outputs/flutter-apk/app-arm64-release.apk dist/dsh-go-muse-arm64.apk
           apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
           "$apksigner" verify --verbose dist/dsh-go-muse-arm64.apk
+          aapt=$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)
+          "$aapt" dump badging dist/dsh-go-muse-arm64.apk > dist/apk-info.txt
+          grep -F "package: name='io.github.carrylin104.musechat'" dist/apk-info.txt
           cd dist
           sha256sum *.apk > SHA256SUMS
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

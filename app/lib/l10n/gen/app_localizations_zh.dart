@@ -10900,6 +10900,30 @@ class L10nZh extends L10n {
   String get modeStartup => '启动时进入';
 
   @override
+  String get museInstallAction => '一键启用 Muse';
+
+  @override
+  String get museInstallBody => '安装包已内置 Muse 图片与视频插件。点一下即可安装，无需下载插件或输入命令；首次启用需要联网补齐依赖。';
+
+  @override
+  String get museSetupTitle => '连接 Muse';
+
+  @override
+  String get museSetupBody => '填写服务地址与 API Key，自动添加图片、视频服务并设为默认。';
+
+  @override
+  String get museSetupAction => '保存并启用图片与视频';
+
+  @override
+  String get museSetupHint => '可粘贴服务器地址、/v1 或 /admin 管理页地址。HTTP 会明文传输密钥和内容。';
+
+  @override
+  String get museSetupUnavailable => '无法添加这两个服务。请先移除不用的服务（最多 8 个），并确认已启用定制版 Muse 插件。';
+
+  @override
+  String get museSetupSaved => 'Muse 图片与视频配置已保存。回到聊天，选择“生成”即可使用；保存不代表接口已验证。';
+
+  @override
   String get nearbyThisChat => '本对话';
 
   @override

@@ -27,6 +27,7 @@ import '../../features/feature_widgets.dart';
 import '../settings_widgets.dart';
 import 'media_service_detail_page.dart';
 import 'media_shared.dart';
+import 'muse_setup_sheet.dart';
 
 class MediaSettingsHomePage extends ConsumerWidget {
   const MediaSettingsHomePage({super.key, required this.ns});
@@ -261,6 +262,17 @@ class MediaSettingsHome extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (presets.any((p) => p.profile == 'muse-image') && presets.any((p) => p.profile == 'muse-video'))
+          SettingsSection(
+            children: [
+              EngineFieldRow(
+                title: l10n.museSetupTitle,
+                subtitle: l10n.museSetupBody,
+                enabled: editable && catalogReady,
+                onTap: editable && catalogReady ? () => unawaited(showMuseSetup(context, ns, settings)) : null,
+              ),
+            ],
+          ),
         if (catalogNote != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: FeatureNote(catalogNote)),
         if (services.isEmpty)
           Padding(padding: const EdgeInsets.only(bottom: 8), child: FeatureNote(l10n.mediaSettingsNoServices)),

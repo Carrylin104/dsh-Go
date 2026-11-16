@@ -13,13 +13,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/engine_settings_state.dart';
+import '../../state/android_features.dart';
 import '../../state/connection_state.dart';
 import '../../state/media_generation.dart';
 import '../../state/hosts_state.dart';
 import '../../state/plugins_state.dart';
 import '../common/app_sheet.dart';
 import '../common/empty_view.dart';
-import '../plugins/plugin_actions.dart' show installMarketEntry;
+import '../plugins/plugin_actions.dart' show installMarketEntry, runPluginInstall;
 import '../plugins/plugin_detail_sheet.dart' show showMarketPluginSheet;
 import '../plugins/plugin_widgets.dart' show PluginInstallProgress;
 import '../plugins/plugins_screen.dart';
@@ -67,13 +68,20 @@ class MediaInstallPrompt extends ConsumerWidget {
             .value
             ?.any((b) => isMediaPluginName(b.name) && (b.installed || b.availability == 'profile')) ??
         false;
-    if (entry == null || listed) {
+    final bundled = ref.read(operatingSystemProvider) == 'android' && ref.read(pluginHostProvider)?.isLocal == true;
+    if ((!bundled && entry == null) || listed) {
       await openMediaPluginMarket(context, tab: listed ? PluginsTab.installed : PluginsTab.market);
       return;
     }
     final host = ref.read(pluginHostProvider);
-    if (host == null || !host.canInstall || marketNeedsApp(entry, ref.read(appVersionProvider)) != null) {
-      await showMarketPluginSheet(context, entry);
+    if (host == null ||
+        !host.canInstall ||
+        (!bundled && marketNeedsApp(entry!, ref.read(appVersionProvider)) != null)) {
+      if (entry != null) {
+        await showMarketPluginSheet(context, entry);
+      } else {
+        await openMediaPluginMarket(context);
+      }
       return;
     }
     // This consumer closes its sheet; the shared install result may still be
@@ -92,7 +100,16 @@ class MediaInstallPrompt extends ConsumerWidget {
       if (client != null && !identical(client, host.client)) retired = true;
     });
     try {
-      final job = await installMarketEntry(context, entry);
+      final job = bundled
+          ? await runPluginInstall(
+              context,
+              const PluginInstallRequest(
+                name: '@ccch1mneyyy/dsh-media',
+                spec: '/opt/dsh-go/dsh-media.tgz',
+                title: 'Muse',
+              ),
+            )
+          : await installMarketEntry(context, entry!);
       if (job?.phase == PluginInstallPhase.succeeded &&
           context.mounted &&
           !retired &&
@@ -110,8 +127,13 @@ class MediaInstallPrompt extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
+    final bundled = ref.watch(operatingSystemProvider) == 'android' && ref.watch(pluginHostProvider)?.isLocal == true;
     final entry = ref.watch(mediaMarketEntryProvider);
-    final job = entry == null ? null : ref.watch(pluginInstallsProvider.select((jobs) => jobs[entry.name]));
+    final job = bundled
+        ? ref.watch(pluginInstallsProvider.select((jobs) => jobs['@ccch1mneyyy/dsh-media']))
+        : entry == null
+        ? null
+        : ref.watch(pluginInstallsProvider.select((jobs) => jobs[entry.name]));
     // Installed and off still has the plugin pages to go to; otherwise this engine has no way to get it.
     final refused =
         (ref.watch(pluginHostProvider)?.installRefused ?? false) &&
@@ -124,7 +146,11 @@ class MediaInstallPrompt extends ConsumerWidget {
       icon: AppIcons.generateMedia,
       compact: compact,
       title: l10n.mediaInstallTitle,
-      message: refused ? l10n.marketInstallRefused : l10n.mediaInstallBody,
+      message: refused
+          ? l10n.marketInstallRefused
+          : bundled
+          ? l10n.museInstallBody
+          : l10n.mediaInstallBody,
       action: refused
           ? null
           : job != null && job.isActive
@@ -141,7 +167,7 @@ class MediaInstallPrompt extends ConsumerWidget {
                 minimumSize: Size(0, compact ? 38 : 44),
                 padding: const EdgeInsets.symmetric(horizontal: 20),
               ),
-              child: Text(l10n.mediaInstallAction),
+              child: Text(bundled ? l10n.museInstallAction : l10n.mediaInstallAction),
             ),
     );
   }

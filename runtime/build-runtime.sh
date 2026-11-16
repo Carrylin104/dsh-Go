@@ -456,6 +456,15 @@ PYEOF
   local pnpm_prefix="$work/pnpm-prefix"
   install_pnpm "$npm_cpu" "$pnpm_prefix"
 
+  # Ship the reviewed Muse plugin with the app; pluginManager installs this
+  # local archive into the user's web profile when they tap Enable Muse.
+  local media="$work/dsh-media.tgz"
+  local media_pack
+  media_pack="$(cd "$HERE/media/dsh-media" && npm pack --ignore-scripts --offline --json --pack-destination "$work")"
+  local media_name
+  media_name="$(printf '%s' "$media_pack" | python3 -I -c 'import json,sys; print(json.load(sys.stdin)[0]["filename"])')"
+  mv "$work/$media_name" "$media"
+
   # -- runtimeVersion: hash of every input + the recipe itself --
   local lockfile="$LOCKS/dsh-$DSH_VERSION/package-lock.json"
   local pnpm_lockfile="$LOCKS/pnpm-$PNPM_VERSION/package-lock.json"
@@ -465,6 +474,7 @@ PYEOF
       sha256 "$base"; sha256 "$node"; sha256 "$python"; sha256sum "${extra_debs[@]}" | cut -d' ' -f1
       sha256 "$proot_deb"; sha256 "$talloc_deb"; sha256 "$shmem_deb"
       sha256 "$lockfile"; sha256 "$pnpm_lockfile"
+      sha256 "$media"
       # Preserve the reviewed pre-OHOS Android identity; changed Android inputs still invalidate it.
       python3 -I "$HERE/lib/android_recipe.py" --dsh-version "$DSH_VERSION"
     } | sha256sum | cut -c1-12 )"
@@ -486,7 +496,7 @@ PYEOF
   "${PY[@]}" assemble --abi "$abi" --base "$base" --node "$node" --dsh-prefix "$prefix" --pnpm-prefix "$pnpm_prefix" \
     "${archive_args[@]}" --report "$out/build-report.json" --runtime-info "$runtime_info" \
     --compress "$COMPRESS" --xz-preset "$XZ_PRESET" --threads "$XZ_THREADS" --epoch "$SOURCE_DATE_EPOCH" "${prune[@]}" \
-    "${extra_debs[@]/#/--deb=}" --python "$python" --bridge "$bridge"
+    "${extra_debs[@]/#/--deb=}" --python "$python" --bridge "$bridge" --media "$media"
 
   local versions
   versions="$(printf '{"runtimeVersion":"%s","dshVersion":"%s","nodeVersion":"%s","pnpmVersion":"%s","ubuntuVersion":"%s","prootVersion":"%s","tallocVersion":"%s","androidShmemVersion":"%s","dshPatches":%s,"dshGoBridge":"%s","build":{"inputsSha256_12":"%s","ubuntuBaseSha256":"%s","nodeSha256":"%s","dshLockSha256":"%s","pnpmIntegrity":"%s","sourceDateEpoch":%s}}' \

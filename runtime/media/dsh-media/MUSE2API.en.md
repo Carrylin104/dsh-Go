@@ -11,11 +11,17 @@ Apply these changes to your fork, enable Actions and run **Android + Muse** manu
 - `dsh-go-muse-arm64`: APK for Android 8+ arm64 phones and SHA256SUMS.
 - `muse-media-plugin`: `ccch1mneyyy-dsh-media-0.3.1-muse.1.tgz`, documentation and SHA256SUMS.
 
-Tools: [flutter-action](https://github.com/subosito/flutter-action), [setup-android](https://github.com/android-actions/setup-android), [setup-java](https://github.com/actions/setup-java), [Gradle actions](https://github.com/gradle/actions). The workflow does not publish releases. Its default debug signing certificate permits installation but cannot replace an official APK with a different certificate; ephemeral runners do not preserve a stable certificate. Export existing data and configure your own stable signing key for long-term use.
+Tools: [flutter-action](https://github.com/subosito/flutter-action), [setup-android](https://github.com/android-actions/setup-android), [setup-java](https://github.com/actions/setup-java), [Gradle actions](https://github.com/gradle/actions). The workflow does not publish releases. The personal app is **DSH Muse**, package `io.github.carrylin104.musechat`; it installs alongside upstream and the first test APK without replacing their data. Set Actions secrets `MUSE_SIGNING_KEY` (base64 PKCS12, alias `muse`) and `MUSE_SIGNING_PASSWORD` for stable signing. No official signing key is used. Updates target the personal fork; until a Release is published, install the APK provided manually.
 
-## Install both the APK and plugin
+## One-tap setup on the phone's local runtime
 
-The APK carries the App/Linux runtime. The custom plugin is a separate package installed through the existing mechanism; rebuilding the APK does not replace a marketplace plugin automatically. Place the tgz at an absolute path readable by the engine host, then run in that host's terminal:
+Download only the APK. Follow onboarding to install the local runtime and configure a chat model, then open **Settings → Images and video → Enable Muse**. The runtime includes `/opt/dsh-go/dsh-media.tgz`; the button installs it with the existing plugin manager. No terminal, shared-storage permission or separate plugin download is needed. Internet access is needed to fetch dependencies the first time. Follow the restart prompt.
+
+Choose **Connect Muse**, enter the service URL and API key, and tap **Save and enable images and video**. Both services share one credential and become their kind's defaults. The form accepts a server root, `/v1`, or `/admin` link and stores the API root. Other services are preserved; configuring the same Muse pair again does not create duplicates. Saving does not verify credentials or generation access.
+
+## Remote hosts and manual installation
+
+Remote hosts do not have the phone's bundled path. Place the separately provided tgz at an absolute path readable by that host, then run in its terminal:
 
 ```sh
 dsh plugin --profile web add /absolute/path/ccch1mneyyy-dsh-media-0.3.1-muse.1.tgz
