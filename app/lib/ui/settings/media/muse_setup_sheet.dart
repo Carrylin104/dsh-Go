@@ -55,14 +55,19 @@ class _MuseSetupSheetState extends ConsumerState<MuseSetupSheet> {
       setState(() => _error = l10n.engineSettingsHostChanged);
       return;
     }
-    final settings = ref.read(engineSettingsProvider).value!;
+    final settings = ref.read(engineSettingsProvider).value;
+    final view = settings?[widget.ns];
+    if (settings == null || view == null || !settings.canWrite(widget.ns)) {
+      setState(() => _error = l10n.museSetupUnavailable);
+      return;
+    }
     final apiKey = _key.text.trim();
     final ns = widget.ns;
     final servicesField = FieldRef(ns, const ['services']);
     final defaultsField = FieldRef(ns, const ['defaults']);
     final plan = museSetupPlan(
       root: root,
-      presets: mediaPresetsOf(settings[ns]!),
+      presets: mediaPresetsOf(view),
       catalog: ref.read(mediaCatalogProvider),
       existing: mediaServicesOf(settings.valueOf(servicesField)),
       defaults: settings.valueOf(defaultsField),

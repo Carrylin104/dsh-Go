@@ -332,6 +332,26 @@ void main() {
     expect(host.credentials['DSH_MEDIA_MUSE2API_API_KEY'], 'SYNTHETIC_MUSE_KEY');
   });
 
+  testWidgets('Muse setup stays recoverable if the plugin is removed while the form is open', (tester) async {
+    await open(
+      tester,
+      describe: _describe(services: [], catalog: museCatalog()),
+    );
+    await tester.tap(find.text(_zh.museSetupTitle));
+    await settle(tester);
+    await tester.enterText(find.byKey(const ValueKey('muse-setup-url')), 'http://192.168.1.10:18610');
+    await tester.enterText(find.byKey(const ValueKey('muse-setup-key')), 'SYNTHETIC_MUSE_KEY');
+    final container = ProviderScope.containerOf(tester.element(find.byKey(const ValueKey('muse-setup-key'))));
+    host.namespaces.clear();
+    await container.read(engineSettingsProvider.notifier).refresh();
+    await flush(tester);
+    await tester.tap(find.widgetWithText(FilledButton, _zh.museSetupAction));
+    await flush(tester);
+    expect(find.text(_zh.museSetupUnavailable), findsOneWidget);
+    expect(host.credentials, isEmpty);
+    expect(host.mutates(), isEmpty);
+  });
+
   testWidgets('the curated page: defaults, services with models and key state, cost guard', (tester) async {
     await open(
       tester,
