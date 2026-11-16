@@ -45,11 +45,13 @@ export async function writeStagedChunk(handle, chunk, hash, signal) {
 
 /** Factory test option permits only literal loopback HTTP, never a hostname resolving to loopback. */
 export function createStreamStager({ allowLoopback = false, lookup = dnsLookup } = {}) {
-  return async function stageDownload(urlValue, { directory, maxBytes = MAX_STAGED_DOWNLOAD_BYTES, timeoutMs = 120_000, signal, ownDownload } = {}) {
+  return async function stageDownload(urlValue, { directory, maxBytes = MAX_STAGED_DOWNLOAD_BYTES, timeoutMs = 120_000, signal, ownDownload, trustedOrigin, headers = {} } = {}) {
     if (typeof urlValue !== 'string' || typeof directory !== 'string' || !isAbsolute(directory) || !Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > MAX_STAGED_DOWNLOAD_BYTES
       || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 1_800_000) fail('invalid_request');
     checkAbort(signal);
-    const url = parseMediaUrl(urlValue, { allowLoopback });
+    if (Object.keys(headers).some(name => name.toLowerCase() !== 'authorization')) fail('invalid_request');
+    const url = parseMediaUrl(urlValue, { allowLoopback, trustedOrigin });
+    if (Object.keys(headers).length && url.origin !== trustedOrigin) fail('unsafe_url');
     const host = url.hostname.replace(/^\[/, '').replace(/\]$/, '');
     const control = new AbortController();
     const abort = () => control.abort(new MediaError('cancelled'));
@@ -110,6 +112,7 @@ export function createStreamStager({ allowLoopback = false, lookup = dnsLookup }
         : await abortable(Promise.resolve().then(() => lookup(host, { all: true, verbatim: true })), control.signal);
       active();
       if (!Array.isArray(addresses) || !addresses.length || addresses.some(entry => {
+        if (url.origin === trustedOrigin) return !isIP(entry.address);
         if (allowLoopback && ['127.0.0.1', '::1'].includes(entry.address)) return !literal;
         return !isPublicAddress(entry.address);
       })) fail('unsafe_url');
@@ -122,7 +125,7 @@ export function createStreamStager({ allowLoopback = false, lookup = dnsLookup }
       await guardFile();
       response = await new Promise((resolve, reject) => {
         const send = url.protocol === 'https:' ? httpsRequest : httpRequest;
-        req = send(url, { method: 'GET', headers: { 'Accept-Encoding': 'identity' }, agent: false,
+        req = send(url, { method: 'GET', headers: { 'Accept-Encoding': 'identity', ...headers }, agent: false,
           family: selected.family, servername: literal ? undefined : host, autoSelectFamily: false,
           maxHeaderSize: 16384, signal: control.signal,
           lookup: (_hostname, options, callback) => {

@@ -527,7 +527,7 @@ MediaPreset? _presetFrom(Object? raw) {
   if (baseUrl is! String) return null;
   final url = Uri.tryParse(baseUrl);
   if (url == null ||
-      url.scheme != 'https' ||
+      (url.scheme != 'https' && !(const {'muse-image', 'muse-video'}.contains(profile) && url.scheme == 'http')) ||
       url.host.isEmpty ||
       url.userInfo.isNotEmpty ||
       url.hasQuery ||

@@ -20069,7 +20069,7 @@ abstract class L10n {
   /// No description provided for @mediaConfigUrlInvalid.
   ///
   /// In zh, this message translates to:
-  /// **'请输入含主机名的 HTTPS API 根地址，不得包含凭据、查询参数、片段或空白。'**
+  /// **'请输入含主机名的 HTTPS API 根地址（自建 muse2api 也支持 HTTP），不得包含凭据、查询参数、片段或空白。'**
   String get mediaConfigUrlInvalid;
 
   /// No description provided for @mediaConfigUrlEndpoint.
@@ -20087,7 +20087,7 @@ abstract class L10n {
   /// No description provided for @mediaConfigUrlHint.
   ///
   /// In zh, this message translates to:
-  /// **'填写 API 根地址，而非生成端点。OpenAI 兼容服务保留其路径前缀（如 /v1）。'**
+  /// **'填写 API 根地址，而非生成端点或管理页。muse2api 可填服务器地址或 /v1；OpenAI 兼容服务保留路径前缀。HTTP 会明文传输密钥与内容。'**
   String get mediaConfigUrlHint;
 
   /// No description provided for @mediaConfigPreview.

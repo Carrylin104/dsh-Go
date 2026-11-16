@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import z from '@deepseek-ai/schemastery';
 import { cnyMicros } from './budget-ledger.js';
 import { formatGenerationMessage } from './header.js';
+import { isMuseProfile, museApiRoot } from './muse.js';
 
 export const CATALOG_META_KEY = 'dsh-go/media/catalog';
 export const CREDENTIAL_SLOTS = Object.freeze([
@@ -110,6 +111,10 @@ function boundedText(value, maximum) {
 // profile only accepts its verified hosts (or documented workspace suffix),
 // and no URL may smuggle credentials, query or fragment.
 function validateBaseUrl(baseUrl, profileName) {
+  if (isMuseProfile(profileName)) {
+    try { museApiRoot(baseUrl); } catch { invalid(); }
+    return;
+  }
   let url;
   try { url = new URL(baseUrl); } catch { invalid(); }
   if (url.protocol !== 'https:' || url.username || url.password
@@ -197,7 +202,7 @@ const Service = z.object({
   enabled: z.boolean().default(false).description('启用'),
   provider: z.string().max(80).default('openai').description('服务商（如 ark、aliyun、openai）'),
   baseUrl: z.string().max(2048).default('https://api.openai.com/v1')
-    .description('服务地址（HTTPS API 根路径，由服务商预设带入）'),
+    .description('服务地址（HTTPS API 根路径；自建 muse2api 也支持 HTTP）'),
   profile: z.union(PROFILES)
     .default('openai-gpt-image').description('请求协议（由服务商预设决定）'),
   responseFormat: z.union(['', 'url', 'b64_json']).default('')

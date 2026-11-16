@@ -3,12 +3,14 @@
 import { CATALOG } from './config.js';
 import { requestBytes, parseMediaUrl } from './http.js';
 import { checkAbort, fail } from './errors.js';
+import { isMuseProfile, museApiRoot, museMediaUrl } from './muse.js';
 
 const taskId = value => {
   if (typeof value !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(value)) fail('response');
   return value;
 };
 export function providerEndpoint(service, suffix) {
+  if (isMuseProfile(service.profile)) return museApiRoot(service.baseUrl) + suffix;
   let base;
   try { base = new URL(service.baseUrl); } catch { fail('unsafe_url'); }
   if (base.username || base.password || base.search || base.hash) fail('unsafe_url');
@@ -31,7 +33,12 @@ export function createDescriptor(request, refs = []) {
   const path = spec?.path ?? (refs.length ? '/images/edits' : '/images/generations');
   let body;
   const headers = {};
-  if (profile.startsWith('openai-')) {
+  if (isMuseProfile(profile)) {
+    if (n !== 1 || refs.length > 1) fail('invalid_request');
+    body = { model: model.id, prompt, size: aspect ?? (model.kind === 'video' ? '16:9' : '1:1'),
+      ...(model.kind === 'video' ? { duration: seconds ?? 5 } : { response_format: 'url' }),
+      ...(refs.length ? { images: refs.map(url => ({ url })) } : {}) };
+  } else if (profile.startsWith('openai-')) {
     body = { model: model.id, prompt, n, ...(size ? { size } : {}), ...(quality ? { quality } : {}) };
     if (refs.length) {
       if (profile !== 'openai-gpt-image') fail('invalid_request');
@@ -75,7 +82,18 @@ export function normalizeImages(profile, value, n) {
 }
 export function normalizeTask(profile, value, expectedId) {
   let id, state, url;
-  if (profile === 'ark-video') {
+  if (isMuseProfile(profile)) {
+    id = value?.id;
+    state = ({ pending: 'queued', queued: 'queued', processing: 'running', running: 'running',
+      completed: 'succeeded', succeeded: 'succeeded', success: 'succeeded', done: 'succeeded',
+      failed: 'failed', cancelled: 'cancelled', canceled: 'cancelled' })[value?.status];
+    url = value?.url ?? value?.video?.url ?? value?.result?.url;
+    if (taskId(id) !== expectedId || !state) fail('response');
+    if (state === 'succeeded' && profile === 'muse-image') {
+      const images = normalizeImages(profile, Array.isArray(value?.data) ? value : { data: [{ url }] }, 1);
+      return { taskId: id, state, images };
+    }
+  } else if (profile === 'ark-video') {
     id = value?.id; state = ({ queued: 'queued', running: 'running', succeeded: 'succeeded', cancelled: 'cancelled', failed: 'failed', expired: 'failed' })[value?.status]; url = value?.content?.video_url;
   } else if (profile === 'ali-video') {
     id = value?.output?.task_id; state = ({ PENDING: 'queued', RUNNING: 'running', SUCCEEDED: 'succeeded', CANCELED: 'cancelled', FAILED: 'failed', UNKNOWN: 'unknown' })[value?.output?.task_status]; url = value?.output?.video_url;
@@ -94,20 +112,21 @@ export function createMediaClient({ transport = requestBytes, queryTimeoutMs = 3
   async function send(service, descriptor, secret, { signal, maxResponseBytes = 32 * 1024 * 1024, timeoutMs = 180_000 } = {}, queryId) {
     checkAbort(signal);
     const url = providerEndpoint(service, descriptor.path);
-    parseMediaUrl(url); // Test transports rewrite a validated production URL internally.
+    const trustedOrigin = isMuseProfile(service.profile) ? new URL(service.baseUrl).origin : undefined;
+    parseMediaUrl(url, { trustedOrigin });
     const timer = AbortSignal.timeout(timeoutMs);
     const active = signal ? AbortSignal.any([signal, timer]) : timer;
     const body = descriptor.body === undefined ? undefined : Buffer.from(JSON.stringify(descriptor.body));
     let response;
     try { response = await transport(url, { method: descriptor.method, headers: { authorization: 'Bearer ' + secret,
-      'content-type': 'application/json', accept: 'application/json', 'accept-encoding': 'identity', ...descriptor.headers }, body, signal: active, maxBytes: maxResponseBytes }); } catch (error) {
+      'content-type': 'application/json', accept: 'application/json', 'accept-encoding': 'identity', ...descriptor.headers }, body, signal: active, maxBytes: maxResponseBytes, trustedOrigin }); } catch (error) {
       if (timer.aborted && !signal?.aborted) fail('timeout');
       throw error;
     }
     checkAbort(active);
     let value;
     try { value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)); } catch { errorStatus(response.status); fail('response'); }
-    errorStatus(response.status, value, service.profile === 'ark-video' && queryId !== undefined
+    errorStatus(response.status, value, (service.profile === 'ark-video' || isMuseProfile(service.profile)) && queryId !== undefined
       && value?.id === queryId && value?.status === 'failed');
     return value;
   }
@@ -120,6 +139,7 @@ export function createMediaClient({ transport = requestBytes, queryTimeoutMs = 3
         fail('submission_unknown');
       }
       try {
+      if (isMuseProfile(request.service.profile)) return { taskId: taskId(value?.id) };
       if (request.model.kind === 'image') return { images: normalizeImages(request.service.profile, value, request.n) };
       const profile = request.service.profile;
       return { taskId: taskId(profile === 'ark-video' ? value?.id : profile === 'ali-video' ? value?.output?.task_id : value?.requestId) };
@@ -129,7 +149,12 @@ export function createMediaClient({ transport = requestBytes, queryTimeoutMs = 3
       taskId(id);
       const profile = request.service.profile;
       const descriptor = { path: CATALOG.profiles[profile].queryPath.replace('{id}', encodeURIComponent(id)), method: profile === 'silicon-video' ? 'POST' : 'GET', ...(profile === 'silicon-video' ? { body: { requestId: id } } : {}) };
-      return normalizeTask(profile, await send(request.service, descriptor, secret, { ...options, timeoutMs: queryTimeoutMs }, id), id);
+      const task = normalizeTask(profile, await send(request.service, descriptor, secret, { ...options, timeoutMs: queryTimeoutMs }, id), id);
+      if (isMuseProfile(profile) && task.state === 'succeeded') {
+        if (task.images) task.images = task.images.map(source => source.url ? { url: museMediaUrl(source.url, request.service) } : source);
+        else task.url = museMediaUrl(task.url, request.service);
+      }
+      return task;
     },
     async cancel(request, id, secret, options) {
       taskId(id);

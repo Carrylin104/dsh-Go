@@ -615,3 +615,33 @@ test('registered video tool follows the per-kind video default over the legacy i
   assert.equal(captured[0].service.id, 'video');
   assert.equal(captured[0].model.id, 'doubao-seedance-2-5-260628');
 });
+
+test('Muse image alone registers background result/recovery tools and survives its tool-call signal', async t => {
+  const release = deferred();
+  let workSignal;
+  const f = await fixture(t, {
+    raw: { services: [service({ id: 'muse', provider: 'muse2api', profile: 'muse-image', models: 'muse-image', baseUrl: 'http://127.0.0.1:18610/v1' })] },
+    configured: [CREDENTIAL_SLOTS[0]],
+    generate: async (request, context) => { workSignal = context.signal; await release.promise; context.signal.throwIfAborted(); return mockResult(request); },
+  });
+  t.after(() => release.resolve());
+  const hooks = [];
+  f.ctx.jobs = {
+    start(spec) { const id = 'muse-job'; hooks.push(spec.run({ id, updateProgress() {} })); return id; },
+    get() { return {}; },
+  };
+  await f.installed.ready;
+  assert.ok(f.registered.has('resume_media'));
+  assert.ok(f.registered.has('get_media_result'));
+  const controller = new AbortController(), exec = { ...f.exec(), signal: controller.signal };
+  const initial = await f.registered.get('generate_image').execute({ prompt: '猫' }, exec);
+  assert.equal(initial.meta.kind, 'image');
+  assert.equal(initial.meta.status, 'running');
+  controller.abort();
+  assert.equal(workSignal.aborted, false);
+  release.resolve();
+  await hooks[0].done;
+  const result = await f.registered.get('get_media_result').execute({ job_id: 'muse-job' }, f.exec());
+  assert.equal(result.meta.status, 'done');
+  assert.equal(result.meta.request.model, 'muse-image');
+});

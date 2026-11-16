@@ -11,6 +11,7 @@ import { requestBytes } from './http.js';
 import { prepareImageStore } from './storage.js';
 import { createStreamStager } from './stream-staging.js';
 import { MediaError, checkAbort, safeFailure, fail } from './errors.js';
+import { isMuseProfile, mediaDownloadOptions } from './muse.js';
 
 const within = (root, path) => { const rel = relative(root, path); return rel !== '..' && !rel.startsWith('..' + sep) && !isAbsolute(rel); };
 function storageFailure(error) {
@@ -63,7 +64,7 @@ export async function generateMedia(request, context) {
   const rid = context.admission?.rid ?? 'm_' + randomUUID();
   const createdAt = new Date().toISOString();
   const outputDate = context.admission?.outputDate ?? createdAt.slice(0, 10);
-  const timeout = AbortSignal.timeout(request.model.kind === 'video' ? 30 * 60_000 : 180_000);
+  const timeout = AbortSignal.timeout(request.model.kind === 'video' || isMuseProfile(request.service.profile) ? 30 * 60_000 : 180_000);
   const signal = AbortSignal.any([context.signal, timeout]);
   const client = context.client ?? createMediaClient({ transport: context.transport ?? requestBytes });
   const transport = context.transport ?? requestBytes;
@@ -92,6 +93,27 @@ export async function generateMedia(request, context) {
     if (!context.resumeTaskId) await context.admission?.begin();
     submitted = true; // Intent may have reached the provider, even if the response is lost.
     const created = context.resumeTaskId ? { taskId: context.resumeTaskId } : await client.create(request, refs, secret, { signal, maxResponseBytes: context.limits.maxResponseBytes });
+    if (created.taskId) {
+      providerTask = created.taskId;
+      if (!context.resumeTaskId) await context.admission?.submitted(providerTask);
+      context.job?.updateProgress('服务端已接收，等待生成');
+      for (;;) {
+        checkAbort(signal);
+        const task = await client.query(request, providerTask, secret, { signal, maxResponseBytes: context.limits.maxResponseBytes });
+        if (task.state === 'failed') fail('generation_failed');
+        if (task.state === 'unknown') fail('remote_may_continue');
+        if (task.state === 'cancelled') { cancelledRemote = 'cancelled'; fail('cancelled'); }
+        if (task.state === 'succeeded') {
+          remoteSucceeded = true;
+          if (request.model.kind === 'image') created.images = task.images;
+          else created.url = task.url;
+          break;
+        }
+        const label = request.model.kind === 'video' ? '视频' : '图片';
+        context.job?.updateProgress(label + (task.state === 'queued' ? '正在排队' : '正在生成'));
+        await sleep(context.pollMs ?? 15_000, undefined, { signal });
+      }
+    }
     if (request.model.kind === 'image') {
       let total = 0;
       for (const source of created.images) {
@@ -99,10 +121,11 @@ export async function generateMedia(request, context) {
         let bytes;
         if (source.b64_json) { base64DecodedLength(source.b64_json, context.limits.maxImageBytes); bytes = Buffer.from(source.b64_json, 'base64'); }
         else {
-          // Public-address checks and DNS pinning are performed by the transport. Never forward credentials.
+          // Recompute auth for every hop. Only the configured Muse origin gets its key.
           let url = source.url;
           for (let hops = 0; ; hops++) {
-            const result = await transport(url, { method: 'GET', headers: { accept: 'image/*', 'accept-encoding': 'identity' }, signal, maxBytes: context.limits.maxImageBytes });
+            const download = mediaDownloadOptions(url, request.service, secret);
+            const result = await transport(url, { ...download, method: 'GET', headers: { accept: 'image/*', 'accept-encoding': 'identity', ...download.headers }, signal, maxBytes: context.limits.maxImageBytes });
             if ([301, 302, 303, 307, 308].includes(result.status)) {
               if (hops === 3 || typeof result.headers.location !== 'string') fail('response');
               url = new URL(result.headers.location, url).href; continue;
@@ -118,31 +141,16 @@ export async function generateMedia(request, context) {
         meta.items.push({ path, mime: info.mime, width: info.width, height: info.height, bytes: bytes.length });
       }
     } else {
-      providerTask = created.taskId;
-      if (!context.resumeTaskId) await context.admission?.submitted(providerTask);
-      context.job?.updateProgress('服务端已接收，等待生成');
-      for (;;) {
-        checkAbort(signal);
-        const task = await client.query(request, providerTask, secret, { signal });
-        if (task.state === 'failed') fail('generation_failed');
-        if (task.state === 'unknown') fail('remote_may_continue');
-        if (task.state === 'cancelled') { cancelledRemote = 'cancelled'; fail('cancelled'); }
-        if (task.state === 'succeeded') {
-          remoteSucceeded = true; // Later download/storage failures do not make this outcome unknown.
-          context.job?.updateProgress('正在保存视频原件');
-          const staged = await (context.stageDownload ?? createStreamStager())(task.url, {
-            directory: store.stagingDirectory, signal, maxBytes: context.limits.maxVideoBytes,
-            ownDownload: store.ownDownload,
-          });
-          const info = await inspectVideo(staged.path, signal);
-          const path = await store.stageDownloaded(staged, info.extension).catch(storageFailure);
-          meta.items.push({ path, mime: info.mime, width: info.width, height: info.height,
-            bytes: staged.bytes, duration: info.duration, codec: info.codec });
-          break;
-        }
-        context.job?.updateProgress(task.state === 'queued' ? '视频正在排队' : '视频正在生成');
-        await sleep(context.pollMs ?? 15_000, undefined, { signal });
-      }
+      context.job?.updateProgress('正在保存视频原件');
+      const staged = await (context.stageDownload ?? createStreamStager())(created.url, {
+        ...mediaDownloadOptions(created.url, request.service, secret),
+        directory: store.stagingDirectory, signal, maxBytes: context.limits.maxVideoBytes,
+        ownDownload: store.ownDownload,
+      });
+      const info = await inspectVideo(staged.path, signal);
+      const path = await store.stageDownloaded(staged, info.extension).catch(storageFailure);
+      meta.items.push({ path, mime: info.mime, width: info.width, height: info.height,
+        bytes: staged.bytes, duration: info.duration, codec: info.codec });
     }
     if (Buffer.byteLength(JSON.stringify({ 'dsh-go/media': meta })) > 8192 || containsSecret(meta, secret)) fail('metadata');
     await context.admission?.settle();

@@ -33,18 +33,19 @@ function hostname(url) {
   return url.hostname.replace(/^\[/, '').replace(/\]$/, '');
 }
 
-export function parseMediaUrl(value, { allowLoopback = false } = {}) {
+export function parseMediaUrl(value, { allowLoopback = false, trustedOrigin } = {}) {
   let url;
   try { url = new URL(value); } catch { fail('unsafe_url'); }
   if (url.username || url.password || url.hash || value.length > 8192) {
     fail('unsafe_url');
   }
   const host = hostname(url);
+  const trusted = trustedOrigin !== undefined && url.origin === trustedOrigin;
   const loopback = host === '127.0.0.1' || host === '::1';
-  if (url.protocol !== 'https:' && !(allowLoopback && loopback && url.protocol === 'http:')) {
+  if (url.protocol !== 'https:' && !((trusted || (allowLoopback && loopback)) && url.protocol === 'http:')) {
     fail('unsafe_url');
   }
-  if (isIP(host) && !(allowLoopback && loopback) && !isPublicAddress(host)) {
+  if (isIP(host) && !trusted && !(allowLoopback && loopback) && !isPublicAddress(host)) {
     fail('unsafe_url');
   }
   return url;
@@ -66,7 +67,7 @@ async function withAbort(promise, signal) {
 
 export function createHttpTransport({ allowLoopback = false, lookup = dnsLookup } = {}) {
   return async function requestBytes(value, {
-    method = 'GET', headers = {}, body, signal, maxBytes,
+    method = 'GET', headers = {}, body, signal, maxBytes, trustedOrigin,
   }) {
     checkAbort(signal);
     if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0
@@ -75,7 +76,7 @@ export function createHttpTransport({ allowLoopback = false, lookup = dnsLookup 
       'host', 'connection', 'upgrade', 'proxy-authorization', 'proxy-connection',
       'transfer-encoding', 'te', 'trailer',
     ].includes(name.toLowerCase()))) fail('invalid_request');
-    const url = parseMediaUrl(value, { allowLoopback });
+    const url = parseMediaUrl(value, { allowLoopback, trustedOrigin });
     const host = hostname(url);
     const literal = isIP(host);
     let addresses;
@@ -89,6 +90,7 @@ export function createHttpTransport({ allowLoopback = false, lookup = dnsLookup 
     checkAbort(signal);
     if (!Array.isArray(addresses) || addresses.length === 0
       || addresses.some(entry => {
+        if (url.origin === trustedOrigin) return !isIP(entry.address);
         if (allowLoopback && (entry.address === '127.0.0.1' || entry.address === '::1')) {
           return !literal;
         }

@@ -1,5 +1,26 @@
 # Media 验证与复现
 
+## 0.3.1-muse.1 自用适配 — 2026-11-16
+
+基线 `d46847ff2e0953d2035e0e6078be1e06dd7cbc40`。本次 Windows x64、Node 24.19.0、Flutter 3.47.7 / Dart 3.13.5；没有修改生产 runtime 锁或引擎补丁，也没有发布 npm。
+
+- 定向 Node：191 通过，3 个 Linux 目录 fsync / 媒体落盘恢复集成用例跳过。命令清单见下；这是定向验证，不是下面历史章节的完整 Linux suite 结论。
+- Flutter：本次修改的两个状态文件和新增测试静态分析无问题；三个媒体设置测试文件 56 通过。中英文文案通过官方生成器再生成，`l10n_merge.py --check` 通过。
+- `actionlint 1.7.12` 检查新增 Android + Muse 工作流通过；完整补丁对基线的独立索引执行 `git apply --cached --check` 通过。npm pack 已检查包含 `src/muse.js` 和新增目录模型。
+- 对用户提供的网关无密钥 GET `/v1/models` 返回 HTTP 401；只证明可达与鉴权开启。没有真实生成、云端工作流运行、APK 编译或 Android 真机结果。
+
+插件目录内执行（Windows 的 `--test-isolation=none` 避开当前沙箱的子进程限制）：
+
+```sh
+node --test --test-isolation=none test/muse.test.js test/adapter-task-failure.test.js test/config.test.js test/header.test.js
+node --test --test-isolation=none test/provider.test.js
+node --test --test-isolation=none --test-name-pattern='registered video tool|Muse image alone' test/wiring.test.js
+node --test --test-isolation=none --test-name-pattern='selected|model|service|parameters|protocol|descriptor|catalog|public option' test/media-v2.test.js
+node --test --test-isolation=none --test-name-pattern='upgrade|response bytes|private address|Content-Length|chunked response|EOF-delimited|truncated' test/core-http.test.js
+```
+
+App 内执行 `flutter analyze --no-pub lib/state/media_settings.dart lib/state/media_catalog.dart test/media/muse_settings_test.dart` 与 `flutter test --no-pub test/media/muse_settings_test.dart test/media/media_settings_test.dart test/media/media_catalog_test.dart`。测试使用仓库原框架和工作目录中的 Noto CJK 字体；没有截图或布局金图断言。云端工作流安装完整 Noto CJK 软件包以满足框架要求。
+
 ## 0.3.0 兼容性集成 — 2026-11-07
 
 本节基于最新 main 基线 3a91fab9 的隔离工作树，不沿用旧工作树的 320 项通过结论。保留 main 已有 owner teardown、暂存清理和 storage 错误分类修复及测试；没有改动生产 runtime 锁、补丁或媒体执行代码。

@@ -232,7 +232,7 @@ MediaUrlIssue? mediaBaseUrlIssue(String value, String profile) {
       text.length > 2048 ||
       RegExp(r'[\s\\\x00-\x1f\x7f]').hasMatch(text) ||
       uri == null ||
-      uri.scheme != 'https' ||
+      (uri.scheme != 'https' && !(const {'muse-image', 'muse-video'}.contains(profile) && uri.scheme == 'http')) ||
       !uri.hasAuthority ||
       uri.host.isEmpty ||
       uri.userInfo.isNotEmpty ||
@@ -243,7 +243,7 @@ MediaUrlIssue? mediaBaseUrlIssue(String value, String profile) {
   }
   final path = uri.path.replaceAll(RegExp(r'/+$'), '').toLowerCase();
   if (RegExp(
-    r'/(images/(generations|edits)|chat/completions|responses|contents/generations/tasks|video/(submit|status)|video-synthesis|multimodal-generation/generation)(/|$)',
+    r'/(admin|images/(generations|edits|tasks)|videos|chat/completions|responses|contents/generations/tasks|video/(submit|status)|video-synthesis|multimodal-generation/generation)(/|$)',
   ).hasMatch(path)) {
     return MediaUrlIssue.endpoint;
   }
@@ -284,6 +284,10 @@ String? mediaRequestPreview(String baseUrl, String profile, Object? catalog) {
     final path = spec['path'];
     if (path is! String || !path.startsWith('/') || path.startsWith('//') || RegExp(r'[\s?#\\]').hasMatch(path)) {
       return null;
+    }
+    if (const {'muse-image', 'muse-video'}.contains(profile)) {
+      final root = baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+      return '$root${root.endsWith('/v1') ? '' : '/v1'}$path';
     }
     return '${Uri.parse(baseUrl.trim()).origin}$path';
   }

@@ -1,7 +1,7 @@
 {
   "v": 1,
-  "revision": "2026-11-01.0.3.0",
-  "asOf": "2026-11-01",
+  "revision": "2026-11-16.muse.1",
+  "asOf": "2026-11-16",
   "contract": "dsh-go/media/catalog",
   "capabilities": {
     "tools": [
@@ -120,6 +120,13 @@
       "verifiedAt": "2026-10-31",
       "level": "official-page-read",
       "verification": "Lite stops new purchases; use documented Pro replacement; no paid request"
+    },
+    {
+      "id": "muse2api-source",
+      "url": "https://github.com/czg86389-hub/muse2api/blob/19db32a3d6ef50dc87567a8ee0e35dd50c8f7837/app.py",
+      "retrieved": "2026-11-16",
+      "level": "project-source-read",
+      "scope": "v1.6.11 async images/tasks, videos, reference images and completed receipts; no live generation."
     }
   ],
   "models": [
@@ -489,6 +496,60 @@
         "1:1": "960x960"
       },
       "defaultSize": "1280x720"
+    },
+    {
+      "id": "muse-image",
+      "label": "Muse Image",
+      "kind": "image",
+      "profile": "muse-image",
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "sizes": [],
+      "aspectSizes": {},
+      "qualities": [],
+      "durations": [],
+      "resolutions": [],
+      "maxN": 1,
+      "maxRefs": 1,
+      "edit": true,
+      "extend": false,
+      "upscale": false,
+      "sources": [
+        "muse2api-source"
+      ]
+    },
+    {
+      "id": "muse-video",
+      "label": "Muse Video",
+      "kind": "video",
+      "profile": "muse-video",
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "sizes": [],
+      "aspectSizes": {},
+      "qualities": [],
+      "durations": [
+        5,
+        6,
+        8,
+        10
+      ],
+      "resolutions": [],
+      "maxN": 1,
+      "maxRefs": 1,
+      "edit": false,
+      "extend": false,
+      "upscale": false,
+      "sources": [
+        "muse2api-source"
+      ]
     }
   ],
   "presets": [
@@ -608,6 +669,34 @@
       ],
       "kind": "image",
       "keyGroup": "gemini"
+    },
+    {
+      "id": "muse2api-image",
+      "label": "muse2api · 图片",
+      "labelEn": "muse2api · Image",
+      "provider": "muse2api",
+      "profile": "muse-image",
+      "baseUrl": "http://127.0.0.1:18610/v1",
+      "responseFormat": "",
+      "models": [
+        "muse-image"
+      ],
+      "kind": "image",
+      "keyGroup": "muse2api"
+    },
+    {
+      "id": "muse2api-video",
+      "label": "muse2api · 视频",
+      "labelEn": "muse2api · Video",
+      "provider": "muse2api",
+      "profile": "muse-video",
+      "baseUrl": "http://127.0.0.1:18610/v1",
+      "responseFormat": "",
+      "models": [
+        "muse-video"
+      ],
+      "kind": "video",
+      "keyGroup": "muse2api"
     }
   ],
   "profiles": {
@@ -663,6 +752,18 @@
         "api.siliconflow.cn"
       ],
       "cancel": "unsupported"
+    },
+    "muse-image": {
+      "path": "/images/tasks",
+      "queryPath": "/images/tasks/{id}",
+      "cancel": "unsupported",
+      "userHosted": true
+    },
+    "muse-video": {
+      "path": "/videos",
+      "queryPath": "/videos/{id}",
+      "cancel": "unsupported",
+      "userHosted": true
     }
   }
 }

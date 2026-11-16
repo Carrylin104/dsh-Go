@@ -10812,7 +10812,7 @@ class L10nZh extends L10n {
   String get mediaConfigCheckDisabled => '此服务已关闭。';
 
   @override
-  String get mediaConfigUrlInvalid => '请输入含主机名的 HTTPS API 根地址，不得包含凭据、查询参数、片段或空白。';
+  String get mediaConfigUrlInvalid => '请输入含主机名的 HTTPS API 根地址（自建 muse2api 也支持 HTTP），不得包含凭据、查询参数、片段或空白。';
 
   @override
   String get mediaConfigUrlEndpoint => '这看起来是请求端点。请填写 API 根地址，主机会自动追加请求路径。';
@@ -10821,7 +10821,7 @@ class L10nZh extends L10n {
   String get mediaConfigUrlRoot => '此协议只需来源地址（https://主机名），不要填写 API 路径。';
 
   @override
-  String get mediaConfigUrlHint => '填写 API 根地址，而非生成端点。OpenAI 兼容服务保留其路径前缀（如 /v1）。';
+  String get mediaConfigUrlHint => '填写 API 根地址，而非生成端点或管理页。muse2api 可填服务器地址或 /v1；OpenAI 兼容服务保留路径前缀。HTTP 会明文传输密钥与内容。';
 
   @override
   String get mediaConfigPreview => '创建请求预览';

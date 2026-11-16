@@ -1,5 +1,7 @@
 # @ccch1mneyyy/dsh-media
 
+本分支是 `0.3.1-muse.1` 自用适配版：增加 muse2api 图片/编辑/视频与 Android 构建工作流。安装、服务地址和限制见 [muse2api 接入说明](MUSE2API.md) / [English](MUSE2API.en.md)。以下保留上游版本背景，尚未向 npm 发布此适配版。
+
 DSH Go 的主机侧媒体插件，版本 `0.3.0`。提供生成图片、用一句话编辑图片、后台生成视频；服务密钥留在 Host credentials，原件保存到当前工作区。设置命名空间保持 `dsh-media`，媒体结果使用冻结的 `meta["dsh-go/media"]` v1。
 
 0.3.0 声明兼容 DSH `0.2.1-rc.4` 与 `0.2.2-rc.1`，验证使用各版已有 runtime 锁，不重新解析生产依赖。实际验证范围与未验证项见 `VERIFICATION.md`。模型可用性、审核、配额和最终费用由供应商决定。App 内置的是设置与媒体展示入口，主机插件仍单独安装；本次不发布 npm、不预装或自动启用插件，也不调用真实付费服务。

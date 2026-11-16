@@ -2,7 +2,7 @@
 const MESSAGES = Object.freeze({
   approval_required: '本次费用未获批准，未提交生成请求。',
   generation_failed: '服务端报告生成失败；预算预留保留，实际费用以账单为准。',
-  recovery_unavailable: '没有可续查的已知视频任务；未重新提交。请检查原任务与主机媒体记录。',
+  recovery_unavailable: '没有可续查的已知媒体任务；未重新提交。请检查原任务与主机媒体记录。',
   budget_exceeded: '今日媒体预算已用完（包含未确认费用的预留），未提交请求。',
   budget: '媒体预算账本不可用或预留已跨日，未继续提交；请检查主机账本。',
   submission_unknown: '提交结果未知，服务端可能已开始并收费；不会自动重试，预算预留保留。',

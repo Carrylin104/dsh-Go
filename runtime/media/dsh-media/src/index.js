@@ -8,6 +8,7 @@ import { generateMedia, mediaMeta, readReferences, validateReferencePins } from 
 import { admitGeneration, recoverAdmission } from './budget.js';
 import { GENERATION_HEADER_INSTRUCTIONS } from './header.js';
 import { MediaError, checkAbort, safeFailure } from './errors.js';
+import { isMuseProfile } from './muse.js';
 
 export { Config };
 export const name = 'dsh-media';
@@ -18,7 +19,7 @@ export const inject = [
 export const SYSTEM_PROMPT = [
   GENERATION_HEADER_INSTRUCTIONS,
   '仅在当前用户明确要求时使用 generate_image、edit_image 或 generate_video；参考图必须是用户指定的工作区文件。',
-  '视频工具返回真实后台 job；完成通知后使用 get_media_result 获取文件与卡片，不要重复提交生成。',
+  '视频及 Muse 图片工具返回真实后台 job；完成通知后使用 get_media_result 获取文件与卡片，不要重复提交生成。',
   '使用已有 job_kill 停止后台工作。只有供应商确认取消才可称已取消；其他情况服务端可能继续并收费。',
   '费用审批由主机执行。未知价格不得报零或编造估价；预算预留不是供应商扣费上限。',
   '工具失败时简短说明失败，不声称已生成；不得编造图片路径。',
@@ -275,7 +276,7 @@ export function installMedia(ctx, config, { generate, admit = admitGeneration, e
             const selected = selectedRequest(args, snapshot, readyServices, toolName);
             const agent = exec.agent, session = agent?.session;
             if (!session || typeof session.id !== 'string') throw new MediaError('permission');
-            const background = toolName === 'generate_video';
+            const background = toolName === 'generate_video' || isMuseProfile(selected.request.service.profile);
             const controller = new AbortController();
             // A completed tool call's signal must not kill the background producer.
             const workSignal = background ? AbortSignal.any([controller.signal, lifetime.signal, lease.signal]) : signal;
@@ -303,7 +304,7 @@ export function installMedia(ctx, config, { generate, admit = admitGeneration, e
             checkAbort(signal);
             if (!background) return validateResult(await generate(selected.request, context));
             if (!ctx.jobs) throw new MediaError('not_configured');
-            return startVideo(selected.request, context, session, exec, controller);
+            return startMedia(selected.request, context, session, exec, controller);
           } catch (error) {
             try { await admission?.releaseUnsent(); }
             finally {
@@ -318,12 +319,12 @@ export function installMedia(ctx, config, { generate, admit = admitGeneration, e
     tool.parameters.additionalProperties = false;
     return tool;
   }
-  function startVideo(request, context, session, exec, controller) {
+  function startMedia(request, context, session, exec, controller) {
     const rid = context.admission?.rid;
     const jobId = ctx.jobs.start({ kind: 'media', label: request.model.label, owner: session.id,
       toolCall: { callId: exec.callId, rootCallId: exec.rootCallId ?? exec.callId }, outputLimitBytes: 4096,
       run(job) {
-        const initial = { meta: mediaMeta(request, rid, 'running', job.id), text: `视频已进入后台任务 ${job.id}；恢复标识 ${rid}。完成通知后调用 get_media_result；Host 重启后用 resume_media(rid) 续查，不重复生成。` };
+        const initial = { meta: mediaMeta(request, rid, 'running', job.id), text: `${request.model.kind === 'video' ? '视频' : '图片'}已进入后台任务 ${job.id}；恢复标识 ${rid}。完成通知后调用 get_media_result；Host 重启后用 resume_media(rid) 续查，不重复生成。` };
         results.set(job.id, { session, value: initial });
         const done = track(Promise.resolve().then(async () => {
           try {
@@ -360,7 +361,7 @@ export function installMedia(ctx, config, { generate, admit = admitGeneration, e
   }
 
   function recoveryCapability(snapshot, services, lease) {
-    const tool = defineTool({ name: 'resume_media', description: 'Host 重启后续查原会话中已提交的视频任务。必须提供原恢复标识 rid；绝不再次创建供应商任务。',
+    const tool = defineTool({ name: 'resume_media', description: 'Host 重启后续查原会话中已提交的视频或 Muse 图片任务。必须提供原恢复标识 rid；绝不再次创建供应商任务。',
       parameters: { rid: { type: 'string', required: true } }, output, isConcurrencySafe: () => false,
       execute(args, exec) {
         return track((async () => {
@@ -382,7 +383,7 @@ export function installMedia(ctx, config, { generate, admit = admitGeneration, e
             || !service.modelIds.includes(saved.request.model.id)) throw new MediaError('permission');
           const selected = selectedRequest({ prompt: saved.request.prompt, serviceId: service.id, modelId: saved.request.model.id,
             ...Object.fromEntries(['n', 'refs', 'aspect', 'size', 'quality', 'seconds', 'resolution'].filter(k => saved.request[k] !== undefined).map(k => [k, saved.request[k]])),
-          }, snapshot, services, 'generate_video');
+          }, snapshot, services, saved.request.model.kind === 'video' ? 'generate_video' : saved.request.refs?.length ? 'edit_image' : 'generate_image');
           // A catalog upgrade may change the provider payload; do not silently resume with a new identity.
           if (JSON.stringify(selected.request) !== JSON.stringify(saved.request)) throw new MediaError('permission');
           checkAbort(exec.signal);
@@ -397,7 +398,7 @@ export function installMedia(ctx, config, { generate, admit = admitGeneration, e
             if (!key?.value || exec.agent.session !== session) throw new MediaError('credential');
             return key.value;
           };
-          return startVideo(saved.request, context, session, exec, controller);
+          return startMedia(saved.request, context, session, exec, controller);
         })());
       },
     });
@@ -428,7 +429,7 @@ export function installMedia(ctx, config, { generate, admit = admitGeneration, e
         const tool = capability(toolName, snapshot, services, abort);
         if (tool) next.disposers.push(ctx.tools.register(tool));
       }
-      if (services.some(s => s.modelIds.some(id => catalogModel(id).kind === 'video'))) {
+      if (services.some(s => isMuseProfile(s.profile) || s.modelIds.some(id => catalogModel(id).kind === 'video'))) {
         next.disposers.push(ctx.tools.register(resultCapability()));
         next.disposers.push(ctx.tools.register(recoveryCapability(snapshot, services, abort)));
       }

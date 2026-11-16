@@ -11390,7 +11390,7 @@ class L10nEn extends L10n {
 
   @override
   String get mediaConfigUrlInvalid =>
-      'Enter an HTTPS API root with a host, without credentials, query, fragment, or whitespace.';
+      'Enter an HTTPS API root with a host (self-hosted muse2api also supports HTTP), without credentials, query, fragment, or whitespace.';
 
   @override
   String get mediaConfigUrlEndpoint =>
@@ -11401,7 +11401,7 @@ class L10nEn extends L10n {
 
   @override
   String get mediaConfigUrlHint =>
-      'Enter the API root, not a generation endpoint. OpenAI-compatible roots keep their prefix (for example /v1).';
+      'Enter the API root, not a generation endpoint or admin page. muse2api accepts the server root or /v1; OpenAI-compatible services keep their prefix. HTTP sends the key and content in plain text.';
 
   @override
   String get mediaConfigPreview => 'Create request preview';

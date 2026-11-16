@@ -24,7 +24,8 @@ export async function admitGeneration(request, context) {
       `服务 ${request.service.id}；目标 ${request.service.baseUrl}；模型 ${request.model.label}（${request.model.id}）。`,
       `尚无覆盖本次输入的可靠价格；本地预留 ¥${hold / 1_000_000}，每日预算 ¥${state.dailyLimitMicros / 1_000_000}。`,
       '预留不是报价或供应商扣费上限，实际费用以服务账单为准；提交后失败或停止等待也保留预留。',
-      request.model.kind === 'video' ? '仅排队阶段可能取消；开始生成后服务端可能继续并收费。' : '',
+      request.service.profile.startsWith('muse-') ? 'Muse 不提供取消接口；停止本地任务后服务端仍可能继续生成。'
+        : request.model.kind === 'video' ? '仅排队阶段可能取消；开始生成后服务端可能继续并收费。' : '',
       request.refs?.length ? '将发送以下工作区文件（本次已读取的内容，文件更改后拒绝提交）：\n' + request.refs.join('\n') : '',
     ].filter(Boolean).join('\n');
     if (!approve || await approve(reason) !== 'allowed-once') fail('approval_required');

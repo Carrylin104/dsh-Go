@@ -1,6 +1,6 @@
 {
   "name": "@ccch1mneyyy/dsh-media",
-  "version": "0.3.0",
+  "version": "0.3.1-muse.1",
   "description": "DeepSeek Harness 图片生成、编辑与后台视频生成；DSH Go 媒体协议 v1",
   "type": "module",
   "main": "src/index.js",
@@ -27,7 +27,10 @@
     "data/models.json",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "src/muse.js",
+    "MUSE2API.md",
+    "MUSE2API.en.md"
   ],
   "scripts": {
     "test": "node --test test/*.test.js",

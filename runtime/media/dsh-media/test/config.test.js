@@ -53,7 +53,7 @@ test('schema serialization preserves extra catalog without creating a catalog va
   const metadata = restored.dict.services.meta.extra[CATALOG_META_KEY];
   assert.deepEqual(metadata, CATALOG);
   assert.deepEqual(metadata.presets, CATALOG.presets);
-  assert.equal(metadata.presets.length, 8);
+  assert.equal(metadata.presets.length, 10);
   assert.equal(restored.dict.services.meta.volatile, true);
   assert.equal(Object.hasOwn(restored.dict, 'catalog'), false);
   assert.equal(Object.hasOwn(restored.dict, 'presets'), false);
@@ -110,8 +110,14 @@ test('catalog entries have explicit evidence, conservative supported dimensions 
     for (const id of model.sources) {
       const source = CATALOG.sources.find(item => item.id === id);
       assert.ok(source);
-      assert.equal(source.level, 'official-page-read');
-      assert.match(source.retrieved ?? source.verifiedAt, /^2026-10-(28|30)$/);
+      if (id === 'muse2api-source') {
+        assert.equal(source.level, 'project-source-read');
+        assert.equal(source.retrieved, '2026-11-16');
+        assert.equal(new URL(source.url).hostname, 'github.com');
+      } else {
+        assert.equal(source.level, 'official-page-read');
+        assert.match(source.retrieved ?? source.verifiedAt, /^2026-10-(28|30)$/);
+      }
     }
     for (const [ratio, size] of Object.entries(model.aspectSizes)) {
       const [a, b] = ratio.split(':').map(Number);
@@ -202,7 +208,7 @@ test('catalog rejects values or identities the header cannot faithfully express'
   }
 });
 
-test('catalog publishes exactly the eight provider presets the settings page offers', () => {
+test('catalog publishes the existing provider presets plus Muse the settings page offers', () => {
   const expected = [
     ['ark-image', '火山方舟 · 图片', 'Volcengine Ark · Image', 'ark', 'ark-image',
       'https://ark.cn-beijing.volces.com', '', ['doubao-seedream-5-0-pro-260628'], 'image', 'ark'],
@@ -220,6 +226,10 @@ test('catalog publishes exactly the eight provider presets the settings page off
       'https://api.openai.com/v1', '', ['gpt-image-2', 'gpt-image-2.5-sunburst', 'gpt-image-2.5-flare'], 'image', 'openai'],
     ['gemini-image', 'Gemini · 图片', 'Gemini · Image', 'gemini', 'openai-compatible',
       'https://generativelanguage.googleapis.com/v1beta/openai', 'b64_json', ['gemini-2.5-flash-image'], 'image', 'gemini'],
+    ['muse2api-image', 'muse2api · 图片', 'muse2api · Image', 'muse2api', 'muse-image',
+      'http://127.0.0.1:18610/v1', '', ['muse-image'], 'image', 'muse2api'],
+    ['muse2api-video', 'muse2api · 视频', 'muse2api · Video', 'muse2api', 'muse-video',
+      'http://127.0.0.1:18610/v1', '', ['muse-video'], 'video', 'muse2api'],
   ];
   assert.deepEqual(CATALOG.presets.map(preset => [
     preset.id, preset.label, preset.labelEn, preset.provider, preset.profile,
@@ -243,7 +253,7 @@ test('preset validation rejects templates the App could not safely instantiate',
   const preset = overrides => ({ ...structuredClone(CATALOG.presets[0]), ...overrides });
   const invalidMessage = { message: '图像服务配置无效，请检查服务、模型和凭据引用。' };
   assert.deepEqual(validatePresets([]), []);
-  assert.equal(validatePresets(structuredClone(CATALOG.presets)).length, 8);
+  assert.equal(validatePresets(structuredClone(CATALOG.presets)).length, 10);
   for (const build of [
     () => validatePresets({}),
     () => validatePresets(Array.from({ length: 17 }, (_, index) => preset({ id: 'preset-' + index }))),
