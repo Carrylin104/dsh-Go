@@ -52,6 +52,15 @@ test('decimal prices use exact integer micro-CNY and round upward', () => {
   }
 });
 
+test('ledger still refuses HTTP endpoints for profiles other than Muse', async t => {
+  const { directory, ledger } = await fixture(t);
+  for (const profile of ['openai-gpt-image', 'review-only', 'muse-image-extra']) {
+    await assert.rejects(ledger.reserve({ ...reservation(), request: request({
+      profile, baseUrl: 'http://127.0.0.1:18610/v1', cwd: directory, workspaceRoot: directory,
+    }) }), code('invalid_record'));
+  }
+});
+
 test('budget counts reservations; rid replay cannot reserve or submit twice', async t => {
   const { ledger } = await fixture(t);
   const input = reservation();

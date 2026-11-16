@@ -69,7 +69,8 @@ function normalizeRequest(input) {
     || !/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(request.keyRef)) fail('invalid_record');
   let endpoint;
   try { endpoint = new URL(request.baseUrl); } catch { fail('invalid_record'); }
-  if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password
+  const httpMuse = endpoint.protocol === 'http:' && ['muse-image', 'muse-video'].includes(request.profile);
+  if ((endpoint.protocol !== 'https:' && !httpMuse) || endpoint.username || endpoint.password
     || endpoint.search || endpoint.hash) fail('invalid_record');
   // Normalized descriptor order gives repeat calls the same identity.
   return request;
