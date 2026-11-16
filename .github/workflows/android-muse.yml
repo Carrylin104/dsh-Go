@@ -100,9 +100,10 @@ jobs:
           set -euo pipefail
           extension=$(find "$FLUTTER_ROOT/packages/flutter_tools/gradle/src/main" -name 'FlutterExtension.*' -print -quit)
           ndk=$(grep -oE 'ndkVersion[^"]*"[0-9.]+"' "$extension" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          tawc_ndk=$(python3 -c 'import json; print(json.load(open("runtime/tawcroot/source.json"))["ndkVersion"])')
           compile_sdk=$(grep -oE 'compileSdkVersion[^0-9]*[0-9]+' "$extension" | grep -oE '[0-9]+$' | head -1)
           test -n "$ndk" && test -n "$compile_sdk"
-          sdkmanager "platform-tools" "platforms;android-$compile_sdk" "build-tools;$compile_sdk.0.0" "ndk;$ndk" "cmake;3.22.1"
+          sdkmanager "platform-tools" "platforms;android-$compile_sdk" "build-tools;$compile_sdk.0.0" "ndk;$ndk" "ndk;$tawc_ndk" "cmake;3.22.1"
           flutter config --no-analytics --android-sdk "$ANDROID_HOME" --jdk-dir "$JAVA_HOME"
       - name: Restore verified runtime downloads
         id: cache
@@ -129,7 +130,9 @@ jobs:
           cd android
           gradle wrapper --gradle-version "$GRADLE_VERSION" --distribution-type bin
       - name: Build APK through the repository build script
-        run: bash tooling/build-apk.sh --release -f arm64 --keep-daemon
+        # The hosted runner can point ANDROID_NDK_HOME at a different NDK.
+        # Let tawcroot select its reviewed pin from the SDK; Flutter has its own ndkVersion.
+        run: env -u ANDROID_NDK_HOME bash tooling/build-apk.sh --release -f arm64 --keep-daemon
       - name: Verify APK and write checksum
         run: |
           mkdir -p dist

@@ -7,7 +7,8 @@
 - 定向 Node：191 通过，3 个 Linux 目录 fsync / 媒体落盘恢复集成用例跳过。命令清单见下；这是定向验证，不是下面历史章节的完整 Linux suite 结论。
 - Flutter：本次修改的两个状态文件和新增测试静态分析无问题；三个媒体设置测试文件 56 通过。中英文文案通过官方生成器再生成，`l10n_merge.py --check` 通过。
 - `actionlint 1.7.12` 检查新增 Android + Muse 工作流通过；完整补丁对基线的独立索引执行 `git apply --cached --check` 通过。npm pack 已检查包含 `src/muse.js` 和新增目录模型。
-- 对用户提供的网关无密钥 GET `/v1/models` 返回 HTTP 401；只证明可达与鉴权开启。没有真实生成、云端工作流运行、APK 编译或 Android 真机结果。
+- 后续 GitHub Actions / Ubuntu 24.04、Node 24.22.1：完整插件测试 387 通过、4 个 DSH_PREFIX 门控用例跳过，包含本次 Muse 图片、视频落盘和断线恢复；Flutter 全项目静态分析无问题，媒体设置测试 56 通过。arm64 运行时已构建并通过仓库校验；APK 结果以 fork 的 Android + Muse 工作流为准。
+- 对用户提供的网关无密钥 GET `/v1/models` 返回 HTTP 401；只证明可达与鉴权开启。没有真实生成或 Android 真机结果。
 
 插件目录内执行（Windows 的 `--test-isolation=none` 避开当前沙箱的子进程限制）：
 

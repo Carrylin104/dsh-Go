@@ -6,7 +6,7 @@ This branch extends the existing MIT-licensed dsh-media plugin with Muse image/v
 
 ## Build in your GitHub fork
 
-Apply these changes to your fork, enable Actions and run **Android + Muse** manually. The workflow uses Ubuntu 24.04, Flutter 3.47.7, Node 24.22.1, JDK 17 and Gradle 9.3.1. It selects SDK/NDK from Flutter, tests the plugin and App, builds the arm64 runtime, invokes `tooling/build-apk.sh`, verifies signing and uploads two artifacts:
+Apply these changes to your fork, enable Actions and run **Android + Muse** manually. The workflow uses Ubuntu 24.04, Flutter 3.47.7, Node 24.22.1, JDK 17 and Gradle 9.3.1. It selects the App SDK/NDK from Flutter and installs the native launcher's NDK pinned in `runtime/tawcroot/source.json`, tests the plugin and App, builds the arm64 runtime, invokes `tooling/build-apk.sh`, verifies signing and uploads two artifacts:
 
 - `dsh-go-muse-arm64`: APK for Android 8+ arm64 phones and SHA256SUMS.
 - `muse-media-plugin`: `ccch1mneyyy-dsh-media-0.3.1-muse.1.tgz`, documentation and SHA256SUMS.

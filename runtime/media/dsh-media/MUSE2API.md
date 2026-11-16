@@ -6,7 +6,7 @@
 
 ## 从 GitHub 构建
 
-在自己的 dsh-go fork 中应用本次改动，启用 Actions，在 **Android + Muse → Run workflow** 运行。使用 Ubuntu 24.04，Flutter 3.47.7、Node 24.22.1、JDK 17、Gradle 9.3.1；SDK/NDK 版本读取 Flutter 的配置。工作流按顺序检查插件与 App、构建 arm64 运行时、调用仓库的 `tooling/build-apk.sh`、校验 APK 签名，然后上传两个 artifact：
+在自己的 dsh-go fork 中应用本次改动，启用 Actions，在 **Android + Muse → Run workflow** 运行。使用 Ubuntu 24.04，Flutter 3.47.7、Node 24.22.1、JDK 17、Gradle 9.3.1；App 的 SDK/NDK 版本读取 Flutter 的配置，原生启动组件另使用 `runtime/tawcroot/source.json` 固定的 NDK。工作流按顺序检查插件与 App、构建 arm64 运行时、调用仓库的 `tooling/build-apk.sh`、校验 APK 签名，然后上传两个 artifact：
 
 - `dsh-go-muse-arm64`：Android 8.0 以上 arm64 真机的 APK、SHA256SUMS。
 - `muse-media-plugin`：`ccch1mneyyy-dsh-media-0.3.1-muse.1.tgz`、说明、SHA256SUMS。
